@@ -34,26 +34,52 @@ def clean_ebay_report(filename, overwrite=False):
             file.write(line + '\n')
 
 def create_csv_database(reports_dir='./ebay_reports/', database_dir='./'):
-    
-    
+    cached_reports_filename = 'cached_reports.txt'
     report_files = glob.glob((reports_dir + '*.{}').format('csv')) # Load all csv files that are in the reports_dir 
     cached_reports = []
+    
+    read_files_exists = False; # Flips to true if cached_reports.txt already exists so that the new reports can be appended 
 
-    if os.path.isfile('./ebay_reports/read_files.txt'):
-        print("IS FILE")
-        past_imported_reports_file = open('./ebay_reports/read_files.txt', 'r')
-        cached_reports = [x.strip() for x in past_imported_reports_file.readlines()]
-        past_imported_reports_file.close()
+    if os.path.isfile(reports_dir + cached_reports_filename):
+        read_files_exists = True;
+        
+        cached_reports_file = open(reports_dir + cached_reports_filename, 'r')
+        cached_reports = [x.strip() for x in cached_reports_file.readlines()]
+        cached_reports_file.close()
     else:
-        past_imported_reports_file = open(reports_dir + "read_files.txt", 'w')
+        cached_reports_file = open(reports_dir + cached_reports_filename, 'w')
 
         for file in report_files:
-            past_imported_reports_file.write(file)
-            past_imported_reports_file.write('\n');
+            cached_reports_file.write(file)
+            cached_reports_file.write('\n')
 
-        past_imported_reports_file.close()
+        cached_reports_file.close()
     
-    new_reports = [file for file in report_files if file not in cached_reports] # Diff of all report files and the reports that have already been cached 
+    # Diff of all report files and the reports that have already been cached 
+    new_reports = [file for file in report_files if file not in cached_reports]     
+
+    if new_reports and read_files_exists: # If the file exist, and there are new reports 
+                                          # append the filenames to the cached_reports.txt file
+        cached_reports_file = open(reports_dir + cached_reports_filename, 'a')
+        for filename in new_reports:
+            cached_reports_file.write(filename)
+            cached_reports_file.write('\n')
+
+    # load current database into memory
+    df = pd.read_csv(database_dir + 'ebay.csv')
+    
+    # Clean the new reports, remove unneeded lines
+    for file in new_reports:
+        clean_ebay_report(file, overwrite=True)
+
+    new_reports_dfs = [pd.read_csv(file) for file in new_reports] # load all of the new reports into memory
+
+    for new_df in new_reports_dfs:
+        df = df._append(new_df)
+
+    # Remove any accidental duplicate entries based on the order numbers
+    df.drop_duplicates(subset='Order Number', keep='first', inplace=True)     
+    df.to_csv(database_dir + 'ebay.csv', mode='w', index=False)
      
     
 '''
@@ -126,11 +152,12 @@ def get_top_city(location_stats_dict):
 
 if __name__ == "__main__":
     '''
-    PLAN:
-        keep a cache of which reports have been loaded into the csv database
-        On program start, check if there are any new reports, load them and append to the master csv, then drop duplicate rows
+    Make the create csv database more general so it can be used for both order reports and transaction reports
+
+    Need a way to pull in ebay fee amount from the transaction reports file so I dont have to calculate it myself
+
+    Idea: Match rows based on the order number, then fill in the missiing data in ebay.csv 
     '''
-    #clean_ebay_report('ebay.csv')
     create_csv_database()
 
 
