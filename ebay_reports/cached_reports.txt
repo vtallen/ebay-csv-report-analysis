@@ -1,5 +1,1 @@
-./ebay_reports/report1.csv
-./ebay_reports/report2.csv
-./ebay_reports/report3.csv
-./ebay_reports/report4.csv
-./ebay_reports/report5.csv
+./ebay_reports/transaction_report.csv
