@@ -1,6 +1,7 @@
 import csv
 from os.path import isfile
 import sys
+from numpy import double
 import pandas as pd
 import os
 import glob
@@ -71,6 +72,7 @@ def update_csv_database(reports_dir='./ebay_reports/', database_filename='ebay.c
         # load current database into memory
         df = pd.read_csv(database_dir + database_filename)
     
+    # There are 11 metadata rows in ebay transaction reports as of 11/8/23
     new_reports_dfs = [pd.read_csv(file, skiprows=11) for file in new_reports] # load all of the new reports into memory
 
     for new_df in new_reports_dfs:
@@ -82,8 +84,10 @@ def update_csv_database(reports_dir='./ebay_reports/', database_filename='ebay.c
     try:
         # Remove data from the report we do not need
         df.drop(df.loc[df['Type'] == 'Payout'].index, inplace=True)
+        df.drop(df.loc[df['Type'] == 'Refund'].index, inplace=True)
+
     except:
-        print("Could not drop rows with 'Type' 'Payout'")
+        print("No rows to drop with 'Type': 'Payout' or 'Refund'")
 
     df.to_csv(database_dir + database_filename, mode='w', index=False)
 
@@ -165,8 +169,16 @@ class EbayCalc:
         self.final_fee_i = header.index('Final Value Fee - fixed')
         self.value_fee_i = header.index('Final Value Fee - variable')
 
-    def get_order_profit(row):
-       pass
+        self.gross_profit = 0.0
+
+    def get_gross_profit(self, row):
+        try:
+            order_pofit = float(row[self.subtotal_i]) - float(row[self.shipping_i]) - float(row[self.final_fee_i]) - float(row[self.value_fee_i])
+            self.gross_profit += order_pofit
+            return order_pofit
+        except ValueError:
+            print("get_order_profit: could not parse data on row")
+
 
 if __name__ == "__main__":
     '''
@@ -186,7 +198,13 @@ if __name__ == "__main__":
     inheader = incsv.__next__()
 
     indataset = [row for row in incsv]
-
+    
+    ebay_calc = EbayCalc(inheader)
+    
+    for row in indataset:
+        print(ebay_calc.get_gross_profit(row))
+    
+    print(ebay_calc.gross_profit)
     infile.close()
     #row1list = df.iloc[10].tolist()
     #print(row1list)
