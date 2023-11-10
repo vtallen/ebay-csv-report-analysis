@@ -1,7 +1,4 @@
 import csv
-from os.path import isfile
-import sys
-from numpy import double
 import pandas as pd
 import os
 import glob
@@ -206,8 +203,6 @@ if __name__ == "__main__":
     
     print(ebay_calc.gross_profit)
     infile.close()
-    #row1list = df.iloc[10].tolist()
-    #print(row1list)
 
 
      
