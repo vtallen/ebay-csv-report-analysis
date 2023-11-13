@@ -3,6 +3,10 @@ import pandas as pd
 import os
 import glob
 
+# Scripts I have made
+import costs
+import itemManager
+
 '''
 Purpose: 
     Reads in an ebay orders report, cleans up the file, then writes a file 
@@ -31,9 +35,22 @@ def clean_ebay_report(filename, overwrite=False):
         for line in file_lines:
             file.write(line + '\n')
 
+'''
+#####################################################################################################################
+Parameters: 
+    reports_dir - The directory this function should look for .csv files to incorporate into the program's database 
+    
+    database_filename - The name of the file this function creates with the merged data
+
+    database_dir - The directory the database csv should be stored in
+
+Returns: 
+    df - a dataframe of the merged database
+#####################################################################################################################
+'''
 def update_csv_database(reports_dir='./ebay_reports/', database_filename='ebay.csv', database_dir='./'):
     report_files = glob.glob((reports_dir + '*.{}').format('csv')) # Load all csv files that are in the reports_dir 
-    cached_reports_filename = 'cached_reports.txt'
+    cached_reports_filename = 'cached_reports.txt' # This file stores the csv files that have alread been merged into the database csv
     cached_reports = []
     
     cached_reports_file_exists = False; # Flips to true if cached_reports.txt already exists so that the new reports can be appended 
@@ -41,10 +58,13 @@ def update_csv_database(reports_dir='./ebay_reports/', database_filename='ebay.c
     if os.path.isfile(reports_dir + cached_reports_filename):
         cached_reports_file_exists = True;
         
+        # Read the names of all the csv files this program has already seen on past runs
         cached_reports_file = open(reports_dir + cached_reports_filename, 'r')
         cached_reports = [x.strip() for x in cached_reports_file.readlines()]
         cached_reports_file.close()
     else:
+        # If the program has not seen any report files yet, it should create the cached_reports.txt file
+        # then store the names of the new reports that are being ingested on this run
         cached_reports_file = open(reports_dir + cached_reports_filename, 'w')
 
         for file in report_files:
@@ -53,9 +73,10 @@ def update_csv_database(reports_dir='./ebay_reports/', database_filename='ebay.c
 
         cached_reports_file.close()
     
-    # Diff of all report files and the reports that have already been cached 
+    # Diff of all report files and the reports that have already been cached to get the reports we have not
+    # seen yet
     new_reports = [file for file in report_files if file not in cached_reports]     
-
+    
     if new_reports and cached_reports_file_exists: # If the file exist, and there are new reports 
                                                    # append the filenames to the cached_reports.txt file
         cached_reports_file = open(reports_dir + cached_reports_filename, 'a')
@@ -63,6 +84,7 @@ def update_csv_database(reports_dir='./ebay_reports/', database_filename='ebay.c
             cached_reports_file.write(filename)
             cached_reports_file.write('\n')
     
+    # Check if we have already created a database csv in the past, if not, create an empty dataframe
     if not os.path.isfile(database_dir + database_filename):
         df = pd.DataFrame()
     else:
@@ -71,7 +93,8 @@ def update_csv_database(reports_dir='./ebay_reports/', database_filename='ebay.c
     
     # There are 11 metadata rows in ebay transaction reports as of 11/8/23
     new_reports_dfs = [pd.read_csv(file, skiprows=11) for file in new_reports] # load all of the new reports into memory
-
+    
+    # Merge all of the new reports into our main database
     for new_df in new_reports_dfs:
         df = df._append(new_df)
 
@@ -82,9 +105,12 @@ def update_csv_database(reports_dir='./ebay_reports/', database_filename='ebay.c
         # Remove data from the report we do not need
         df.drop(df.loc[df['Type'] == 'Payout'].index, inplace=True)
         df.drop(df.loc[df['Type'] == 'Refund'].index, inplace=True)
-
     except:
         print("No rows to drop with 'Type': 'Payout' or 'Refund'")
+    
+    # Sort the database by date
+    df['Transaction creation date'] = pd.to_datetime(df['Transaction creation date'])
+    df.sort_values(by='Transaction creation date', inplace=True)
 
     df.to_csv(database_dir + database_filename, mode='w', index=False)
 
@@ -159,6 +185,14 @@ def get_top_city(location_stats_dict):
     
     return [top_city_state, top_city]
 
+'''
+#####################################################################################################################
+Class EbayCalc:
+    Constructor Parameters:
+    header - the header for the CSV file you are running reports on
+
+#####################################################################################################################
+'''
 class EbayCalc:
     def __init__(self, header):
         self.subtotal_i = header.index('Item subtotal')
@@ -170,24 +204,14 @@ class EbayCalc:
 
     def get_gross_profit(self, row):
         try:
-            order_pofit = float(row[self.subtotal_i]) - float(row[self.shipping_i]) - float(row[self.final_fee_i]) - float(row[self.value_fee_i])
+            order_pofit = float(row[self.subtotal_i]) + float(row[self.shipping_i])
             self.gross_profit += order_pofit
             return order_pofit
         except ValueError:
             print("get_order_profit: could not parse data on row")
-
+    
 
 if __name__ == "__main__":
-    '''
-    Make the create csv database more general so it can be used for both order reports and transaction reports
-
-    Need a way to pull in ebay fee amount from the transaction reports file so I dont have to calculate it myself
-
-    Idea: Match rows based on the order number, then fill in the missiing data in ebay.csv 
-
-    I could also do it by maintaining 2 csv databses and pulling from both when I need data, this may be easier
-    to modify in the future if I want to derive more data
-    '''
     update_csv_database()
     
     infile = open('ebay.csv', 'r')
@@ -197,11 +221,21 @@ if __name__ == "__main__":
     indataset = [row for row in incsv]
     
     ebay_calc = EbayCalc(inheader)
-    
+    item_mngr = itemManager.ItemManager(header=inheader)
+
     for row in indataset:
-        print(ebay_calc.get_gross_profit(row))
+        ebay_calc.get_gross_profit(row)
+        item_mngr.visit_row(row)
+
+    costs_header, costs_dataset = costs.get_costs_dataset()
+    sum_costs = costs.sum_costs(header=costs_header, dataset=costs_dataset)
     
-    print(ebay_calc.gross_profit)
+    print('Gross Profit: ', ebay_calc.gross_profit)
+    print('Net Profit: ', ebay_calc.gross_profit - sum_costs)
+    
+    for item in item_mngr.items:
+        print(item)
+    
     infile.close()
 
 

@@ -120,7 +120,7 @@ def run(csv_dir, csv_filename, header, dataset):
         if cmd == 'exit':
             break
 
-        if cmd == 'add':
+        elif cmd == 'add':
             # Date,Website,Item,Cost/unit,Has tax,Tax,Total cost,Quantity,Total,
             new_row = get_item_row(header, dataset)
             print(new_row)
@@ -128,11 +128,23 @@ def run(csv_dir, csv_filename, header, dataset):
 
             if confirm == 'y':
                 indataset.append(new_row)
+        
+        elif cmd == 'sum':
+            print('Total costs: ', sum_costs(header, dataset))
 
     write_csv(csv_dir, csv_filename, inheader, indataset)
 
-def sum_costs(costs_csv_dir='./', costs_csv_filename='costs.csv'):
-    pass
+def sum_costs(header, dataset):
+    total_i = header.index('Total')
+    
+    total = 0.0
+    for i, row in enumerate(dataset):
+        try:
+            total += float(row[total_i])
+        except TypeError:
+            print('No valid data for field "Total" on line ', i)
+    
+    return total
 
 if __name__ == "__main__":
     csv_filename = 'costs.csv'
