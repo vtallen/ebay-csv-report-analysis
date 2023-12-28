@@ -37,6 +37,7 @@ def get_item_row(inheader, indataset):
     item_name = input('\nEnter a number or the name of a new item >> ')
             
     old_item = False
+
     try:
         item_int = int(item_name)
         item_name = items[item_int]
@@ -92,15 +93,15 @@ def get_item_row(inheader, indataset):
     #TODO Per unit cost with tax needs to be seperate
     TAX_RATE = 0.06
 
-    subtotal = cost_unit * quantity
 
     tax = 0.0
     if has_tax:
-        tax = subtotal * TAX_RATE
+        tax = cost_unit * TAX_RATE
 
-    total = subtotal + tax 
+    per_item_total = cost_unit + tax
+    total = per_item_total * quantity
              
-    new_row = [purchase_date, website, item_name, cost_unit, has_tax_str, tax, subtotal, quantity, total]
+    new_row = [purchase_date, website, item_name, cost_unit, has_tax_str, tax, per_item_total, quantity, total]
 
     return new_row
 

@@ -1,2 +1,3 @@
 ./ebay_reports/Transaction_report_20220101_20230101.csv
 ./ebay_reports/Transaction_report_20230102_20231110.csv
+./ebay_reports/Transaction_report_20230101_20231227.csv

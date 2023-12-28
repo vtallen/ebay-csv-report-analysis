@@ -194,13 +194,18 @@ Class EbayCalc:
 #####################################################################################################################
 '''
 class EbayCalc:
-    def __init__(self, header):
+    def __init__(self, header, item_man):
+        self.item_man = item_man
+
         self.subtotal_i = header.index('Item subtotal')
         self.shipping_i = header.index('Shipping and handling')
+        self.date_i = header.index('')
         self.final_fee_i = header.index('Final Value Fee - fixed')
         self.value_fee_i = header.index('Final Value Fee - variable')
 
         self.gross_profit = 0.0
+        
+        self.item_names = []
 
     def get_gross_profit(self, row):
         try:
@@ -220,12 +225,14 @@ if __name__ == "__main__":
 
     indataset = [row for row in incsv]
     
-    ebay_calc = EbayCalc(inheader)
     item_mngr = itemManager.ItemManager(header=inheader)
+    ebay_calc = EbayCalc(inheader, item_mngr)
+
+    for row in indataset:
+        item_mngr.visit_row(row)
 
     for row in indataset:
         ebay_calc.get_gross_profit(row)
-        item_mngr.visit_row(row)
 
     costs_header, costs_dataset = costs.get_costs_dataset()
     sum_costs = costs.sum_costs(header=costs_header, dataset=costs_dataset)
@@ -233,10 +240,15 @@ if __name__ == "__main__":
     print('Gross Profit: ', ebay_calc.gross_profit)
     print('Net Profit: ', ebay_calc.gross_profit - sum_costs)
     
+    item_mngr.print_lookup_table()
+
+    print('New items')
     for item in item_mngr.items:
         print(item)
-    
+ 
     infile.close()
+
+    item_mngr.run_define_costs()
 
 
      
