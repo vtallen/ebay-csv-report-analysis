@@ -1,10 +1,8 @@
 import csv
 import os
 from os import system, name
-import datetime
+import datetime 
 import pandas as pd
-
-
 def clear():
  
     # for windows
@@ -66,8 +64,6 @@ class ItemManager:
             self.lookup_table = [row for row in incsv]
             infile.close()
 
-            for line in self.lookup_table:
-                print(line)
         else:
             outfile = open(self.csv_dir + self.lookup_table_filename, 'w')
             outfile.close()
@@ -100,7 +96,6 @@ class ItemManager:
     def write_alias_table(self):
         outfile = open(self.csv_dir + self.alias_table_filename, 'w')
         outcsv = csv.writer(outfile, delimiter=',', quotechar='"')
-        print('alias header' , self.alias_table_header) 
         outcsv.writerow(self.alias_table_header)
         outcsv.writerows(self.alias_table)
         outfile.close()
@@ -135,6 +130,11 @@ class ItemManager:
         if alias:
             item = alias
 
+        if date == 'present':
+            date = datetime.datetime.now().date()
+        else:
+            date = datetime.datetime.strptime(date, '%Y-%m-%d').date()
+
         if item in self.valid_items:
             for row in self.lookup_table:
                 
@@ -154,10 +154,13 @@ class ItemManager:
                 else:
                     end_date = datetime.datetime.strptime(row[self.lookup_table_enddate_i].strip(), '%Y-%m-%d').date()
 
-                datelist = pd.date_range(start_date, end_date)
-                datelist = [x.date() for x in datelist]
+                #datelist = pd.date_range(start_date, end_date)
+                #datelist = [x.date() for x in datelist]
+                #datelist.append(datetime.datetime.now().date() + datetime.timedelta(1))
 
-                if (row[self.lookup_table_item_i] == item) and date in datelist: 
+                #if (row[self.lookup_table_item_i] == item) and date in datelist:
+                 #   return row[self.lookup_table_cost_i]
+                if (row[self.lookup_table_item_i] == item) and (date > start_date) and (date <= end_date):
                     return row[self.lookup_table_cost_i]
         
         return -1

@@ -31,5 +31,19 @@ def fix_date_format(filename, col_num, in_fmt, out_fmt):
     outcsv.writerows(out_table)
     outfile.close()
 
+def sum_col(filename, field_str):
+    infile = open(filename, 'r')
+    incsv = csv.reader(infile, delimiter=',', quotechar='"')
+    inheader = incsv.__next__()
+
+    col_i = inheader.index(field_str)
+    sum = 0.0
+
+    for row in incsv:
+        sum += float(row[col_i])
+    
+    return sum
+
 if __name__ == '__main__':
-    pass
+    print(sum_col('mercari_reports/2022report.csv', 'Net Seller Proceeds')) 
+    print(sum_col('mercari_reports/2023report.csv', 'Net Seller Proceeds')) 
