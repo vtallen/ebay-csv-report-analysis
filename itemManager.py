@@ -2,7 +2,7 @@ import csv
 import os
 from os import system, name
 import datetime 
-import pandas as pd
+
 def clear():
  
     # for windows
@@ -14,19 +14,21 @@ def clear():
         _ = system('clear')
 
 '''
-What this class needs to do:
-    Visit each row of the transactions csv and derive:
-    what items I have sold, then if those items have not
-    been given costs, the user should be prompted to 
-    give a cost.
-
-    If the item should be ignored in the dataset, the 
-    cost should be deleted from the dataset 
-    
-    The user should be able to enter duplicate removal mode where they can
-    select two items and replace the titles of one of the items with the title of the
-    other so that they will have the same cost when reports are run
-
+* ***************************************************************************************** *
+*                                                                                           *
+* Class name:       ItemManager                                                             *
+*                                                                                           *
+* Description:      Manages the lookup of the cost of specific ebay items. It stores the    *
+*                   name of an item, how much that item costs to make, and the Effective    *
+*                   date range for that price in a CSV file. It then allows other classes   *
+*                   to retreive that data in order to do calculations                       *
+*                                                                                           *
+* Parameters:      [str] header               : The header of the csv database              *
+*                  str   csv_dir              : The directory to put the csv into           *
+*                  str   lookup_table_filename: name for the item cost csv file             *
+*                  str   alias_table_filename : name for the alias csv file                 *
+*                                                                                           *
+* ***************************************************************************************** *
 '''
 class ItemManager:
     def __init__(self, header, csv_dir='./', lookup_table_filename='item_lookup_table.csv', alias_table_filename='item_alias_table.csv'):
@@ -35,14 +37,19 @@ class ItemManager:
         self.alias_table_filename = alias_table_filename
 
         self.item_name_i = header.index('Item title')
-
+        
+        # Where the items visit_row has seen will go
         self.items = set()
-             
+        
+        # Variables for storing the alias table. This allows multiple item names to 
+        # point to the same cost entry in the lookup table
         self.alias_table_header = ['Item','Alias']
         self.alias_table_item_i = self.alias_table_header.index('Item')
         self.alias_table_alias_i = self.alias_table_header.index('Alias')
         self.alias_table = []
-
+        
+        # Variables for the lookup table where item names will be associated
+        # with their costs and date ranges
         self.lookup_table_header = ['Item','Cost','Start Date', 'End Date']
         self.lookup_table_item_i = self.lookup_table_header.index('Item')
         self.lookup_table_cost_i = self.lookup_table_header.index('Cost')
@@ -51,10 +58,25 @@ class ItemManager:
         self.lookup_table = []
 
         self.load_tables()
-
+        
+        # Valid items are the items within the lookup table either with a price, or which are to be ignored
         self.valid_items = []
+
+        # New items are items yet to be added to the lookup table. This allows the define costs function
+        # to see which items need costs added to them
         self.new_items = []
 
+    '''
+    * ***************************************************************************************** *
+    *                                                                                           *
+    * Function name:    load_lookuptable                                                        *
+    *                                                                                           *
+    * Description:      loads the lookup table csv into memory                                  *
+    *                                                                                           *
+    * Return Value:     none                                                                    *
+    *                                                                                           *
+    * ***************************************************************************************** *
+    '''
     def load_lookuptable(self):
         if os.path.isfile(self.csv_dir + self.lookup_table_filename):
             infile = open(self.csv_dir + self.lookup_table_filename, 'r')
@@ -69,6 +91,17 @@ class ItemManager:
             outfile.close()
 
    
+    '''
+    * ***************************************************************************************** *
+    *                                                                                           *
+    * Function name:    load_alias_table                                                        *
+    *                                                                                           *
+    * Description:      loads the alias table csv into memory                                   *
+    *                                                                                           *
+    * Return Value:     none                                                                    *
+    *                                                                                           *
+    * ***************************************************************************************** *
+    '''
     def load_alias_table(self):
         if os.path.isfile(self.csv_dir + self.alias_table_filename):
             infile = open(self.csv_dir + self.alias_table_filename, 'r')
@@ -82,10 +115,33 @@ class ItemManager:
             outfile.close()
 
     
+    '''
+    * ***************************************************************************************** *
+    *                                                                                           *
+    * Function name:    load_tables                                                             *
+    *                                                                                           *
+    * Description:      loads both the alias table and lookup table csvs into memory            *
+    *                                                                                           *
+    * Return Value:     none                                                                    *
+    *                                                                                           *
+    * ***************************************************************************************** *
+    '''
     def load_tables(self):
         self.load_lookuptable()
         self.load_alias_table()
     
+    '''
+    * ***************************************************************************************** *
+    *                                                                                           *
+    * Function name:    write_lookup_table                                                      *
+    *                                                                                           *
+    * Description:      writes out the lookup table to a file at directory self.csv_dir and     *
+    *                   filename self.lookup_table_filename                                     *
+    *                                                                                           *
+    * Return Value:     none                                                                    *
+    *                                                                                           *
+    * ***************************************************************************************** *
+    '''
     def write_lookup_table(self):
         outfile = open(self.csv_dir + self.lookup_table_filename, 'w')
         outcsv = csv.writer(outfile, delimiter=',', quotechar='"')
@@ -93,6 +149,18 @@ class ItemManager:
         outcsv.writerows(self.lookup_table)
         outfile.close()
 
+    '''
+    * ***************************************************************************************** *
+    *                                                                                           *
+    * Function name:    write_alias_table                                                       *
+    *                                                                                           *
+    * Description:      writes out the alias table to a file at directory self.csv_dir and      *
+    *                   filename self.alias_table_filename                                      *
+    *                                                                                           *
+    * Return Value:     none                                                                    *
+    *                                                                                           *
+    * ***************************************************************************************** *
+    '''
     def write_alias_table(self):
         outfile = open(self.csv_dir + self.alias_table_filename, 'w')
         outcsv = csv.writer(outfile, delimiter=',', quotechar='"')
@@ -100,13 +168,50 @@ class ItemManager:
         outcsv.writerows(self.alias_table)
         outfile.close()
 
+    '''
+    * ***************************************************************************************** *
+    *                                                                                           *
+    * Function name:    write_tables                                                            *
+    *                                                                                           *
+    * Description:      writes out both the alias table and the lookup table to csv files       *
+    *                                                                                           *
+    * Return Value:     none                                                                    *
+    *                                                                                           *
+    * ***************************************************************************************** *
+    '''
     def write_tables(self):
         self.write_lookup_table()
         self.write_alias_table()
     
+    '''
+    * ***************************************************************************************** *
+    *                                                                                           *
+    * Function name:    tables_exist                                                            *
+    *                                                                                           *
+    * Description:      Checks if both the alias table csv and the lookup table csv file already*
+    *                   exist                                                                   *
+    *                                                                                           *
+    * Return Value:     bool                                                                    *
+    *                                                                                           *
+    * ***************************************************************************************** *
+    '''
     def tables_exist(self):
         return os.path.isfile(self.csv_dir + self.lookup_table_filename) and os.path.isfile(self.csv_dir + self.alias_table_filename)
     
+    '''
+    * ***************************************************************************************** *
+    *                                                                                           *
+    * Function name:    tables_complete                                                         *
+    *                                                                                           *
+    * Description:      Goes through each item that the class has seen and checks if there is an*
+    *                   entry in the lookup table for it, or if there is an alias that is       *
+    *                   contained within the lookup table. If there is not the function returns *
+    *                   False                                                                   *
+    *                                                                                           *
+    * Return Value:     bool                                                                    *
+    *                                                                                           *
+    * ***************************************************************************************** *
+    '''
     def tables_complete(self):
         for item_name in self.items:
             if not any(row[self.lookup_table_item_i] == item_name for row in self.lookup_table) and not self.get_alias(item_name):
@@ -114,9 +219,34 @@ class ItemManager:
         
         return True
     
+    '''
+    * ***************************************************************************************** *
+    *                                                                                           *
+    * Function name:    create_alias                                                            *
+    *                                                                                           *
+    * Description:      Adds an entry to the alias table                                        *
+    *                                                                                           *
+    * Return Value:     none                                                                    *
+    *                                                                                           *
+    * ***************************************************************************************** *
+    '''
     def create_alias(self, item_name, alias):
         self.alias_table.append([item_name, alias])  
     
+    '''
+    * ***************************************************************************************** *
+    *                                                                                           *
+    * Function name:    get_alias                                                               *
+    *                                                                                           *
+    * Description:      Retreives the alias for a given item name if it exists. Returns '' if   *
+    *                   there is not one                                                        *
+    *                                                                                           *
+    * Parameters:       str item_name   :   The item for which to find an alias for             *
+    *                                                                                           *
+    * Return Value:     str :   The name of the item item_name points to                        *
+    *                                                                                           *
+    * ***************************************************************************************** *
+    '''
     def get_alias(self, item_name):
         for row in self.alias_table:
             if (row[self.alias_table_item_i] == item_name):
@@ -124,6 +254,21 @@ class ItemManager:
 
         return ''
     
+    '''
+    * ***************************************************************************************** *
+    *                                                                                           *
+    * Function name:    get_cost                                                                *
+    *                                                                                           *
+    * Description:      Obtains the cost to create an item given it's name and the date to get  *
+    *                   the price for                                                           *
+    *                                                                                           *
+    * Parameters:       str item      :     The item for which to find the cost for             *
+    *                   datetime date :     The date for which to find the cost for             * 
+    *                                                                                           *
+    * Return Value:     float         :     The cost of the item                                *
+    *                                                                                           *
+    * ***************************************************************************************** *
+    '''
     def get_cost(self, item, date):
         alias = self.get_alias(item)
             
@@ -154,38 +299,92 @@ class ItemManager:
                 else:
                     end_date = datetime.datetime.strptime(row[self.lookup_table_enddate_i].strip(), '%Y-%m-%d').date()
 
-                #datelist = pd.date_range(start_date, end_date)
-                #datelist = [x.date() for x in datelist]
-                #datelist.append(datetime.datetime.now().date() + datetime.timedelta(1))
-
-                #if (row[self.lookup_table_item_i] == item) and date in datelist:
-                 #   return row[self.lookup_table_cost_i]
                 if (row[self.lookup_table_item_i] == item) and (date > start_date) and (date <= end_date):
                     return row[self.lookup_table_cost_i]
         
         return -1
 
+    '''
+    * ***************************************************************************************** *
+    *                                                                                           *
+    * Function name:    visit_row                                                               *
+    *                                                                                           *
+    * Description:      Memorizes the data from a row into this class                           *
+    *                                                                                           *
+    * Parameters:       str row     :   A row of data from the ebay database csv                *
+    *                                                                                           *
+    * Return Value:     none                                                                    *
+    *                                                                                           *
+    * ***************************************************************************************** *
+    '''
     def visit_row(self, row):
         self.items.add(row[self.item_name_i])
 
         self.update_valid_items()
     
+    '''
+    * ***************************************************************************************** *
+    *                                                                                           *
+    * Function name:    update_valid_items                                                      *
+    *                                                                                           *
+    * Description:      Makes it so that any items not in the lookup table are listed in the    *
+    *                   new itemes list                                                         *
+    *                                                                                           *
+    * Return Value:     none                                                                    *
+    *                                                                                           *
+    * ***************************************************************************************** *
+    '''
     def update_valid_items(self):
         self.valid_items = [item for item in [row[self.lookup_table_item_i] for row in self.lookup_table]]
         self.valid_items.extend([item for item in self.items if self.get_alias(item) != ''])
 
         self.new_items = [item for item in self.items if item not in self.valid_items]
     
+    '''
+    * ***************************************************************************************** *
+    *                                                                                           *
+    * Function name:    print_lookup_table                                                      *
+    *                                                                                           *
+    * Description:      Prints a complete price list for the valid items on a date              *
+    *                                                                                           *
+    * Parameters:       str date    :   The date for which to print the price list for          *
+    *                                                                                           *
+    * Return Value:     none                                                                    *
+    *                                                                                           *
+    * ***************************************************************************************** *
+    '''
     def print_lookup_table(self, date='present'):
         lookup_table_items = [item for item in [row[self.lookup_table_item_i] for row in self.lookup_table]]
         
         for i, item in enumerate(lookup_table_items):
             print(i, ':', item, "-", self.get_cost(item, date))
     
+    '''
+    * ***************************************************************************************** *
+    *                                                                                           *
+    * Function name:    print_new_items                                                         *
+    *                                                                                           *
+    * Description:      Prints all new items in the new items list                              *
+    *                                                                                           *
+    * Return Value:     none                                                                    *
+    *                                                                                           *
+    * ***************************************************************************************** *
+    '''
     def print_new_items(self):
         for i, item in enumerate(self.items):
             print(i, ' - ', item)
 
+    '''
+    * ***************************************************************************************** *
+    *                                                                                           *
+    * Function name:    run_define_costs                                                        *
+    *                                                                                           *
+    * Description:      Runs an interactive shell to add items to the lookup table              *
+    *                                                                                           *
+    * Return Value:     none                                                                    *
+    *                                                                                           *
+    * ***************************************************************************************** *
+    '''
     def run_define_costs(self):
         menu = '''
             0 - exit
@@ -238,6 +437,7 @@ class ItemManager:
                 break
 
 if __name__ == "__main__":
+
     print('ItemManager test cases: ')
     lookup_table_header = ['Item', 'Cost', 'Start Date', 'End Date']
     lookup_table = [['Item1', '10.99', '01-22-2012','present'],

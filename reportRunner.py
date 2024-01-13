@@ -562,9 +562,9 @@ if __name__ == "__main__":
     stats.run_monthly_reports()
     stats.print_monthly_reports(datetime.datetime.now().year)
 
-    stats.run_relative_reports()
     print('RELATIVE REPORTS:')
     print('======================================================================')
+    stats.run_relative_reports()
     stats.print_relative_reports()
     
 
