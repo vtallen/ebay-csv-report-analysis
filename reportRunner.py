@@ -138,94 +138,23 @@ def update_csv_database(reports_dir='./ebay_reports/', database_filename='ebay.c
 
     return df
      
-    
-'''
-Parameters:
-    data_frame: pandas data frame
-
-Returns:
-    A dictionary in the following format, containing all states + cities,
-    as well as how many orders were sent to each city
-
-    {
-        "NY":{
-            "TOTAL":15
-            "Brooklyn":10
-            "New York":5
-        }
-    }
-'''
-def get_location_stats(data_frame):
-    location_dict = {} 
-
-    for index, row in data_frame.iterrows():
-        state = row['Buyer State']
-        city = row['Buyer City']
-
-        if state in location_dict:
-            location_dict[state]["TOTAL"] += 1
-
-            if city in location_dict[state]:
-                location_dict[state][city] += 1 
-            else:
-                location_dict[state][city] = 1
-
-        else:
-            location_dict[state] = {
-                    "TOTAL":1,
-                    city:1
-                    }
-
-    return location_dict
-
-
-def get_top_state(location_stats_dict):
-    top_state = ''
-    top_state_count = 0
-
-    for key in location_stats_dict.keys():
-        if location_stats_dict[key]["TOTAL"] > top_state_count:
-            top_state = key
-            top_state_count = location_stats_dict[key]["TOTAL"]
-    
-    return top_state
-
-def get_top_city(location_stats_dict):
-    top_city = ''
-    top_city_state = ''
-    top_city_count = 0
-
-    for state in location_stats_dict.keys():
-        for city in location_stats_dict[state].keys():
-            if city == "TOTAL":
-                continue
-            
-            if location_stats_dict[state][city] > top_city_count:
-                top_city = city
-                top_city_state = state
-                top_city_count = location_stats_dict[state][city]
-    
-    return [top_city_state, top_city]
-
-'''
-#####################################################################################################################
-Class EbayCalc:
-    Constructor Parameters:
-    header - the header for the CSV file you are running reports on
-
-#####################################################################################################################
-'''
 '''
 * ***************************************************************************************** *
 *                                                                                           *
-* Class name:   getPrices                                                                *
-* Description:     Takes user input and stores it into the supplied reference parameters    *
+* Class name:       EbayReport                                                              *
 *                                                                                           *
-* Parameters:      double&   current: The current price of the item                         *
-*                  double&   priceOneYAgo: The price of the item 1 year ago                 *
-*                  double&   priceTwoYAgo: The price of the item 2 years ago                *
+* Description:      Contains all statistics about ebay transactions over a given time period*
+*                   it memorizes all rows that are passed into it's visit_row function. Any *
+*                   rows not within the start_date and end_date will be ignored             *
 *                                                                                           *
-* Return Value:    none                                                                     *
+* Parameters:      [str] header             : The header of the csv database                *
+*                  str   name               : An identifier for when this report is printed *
+*                  ItemManager item_man     : The class responsible for keeping track of    *
+*                                             item costs and if an item should be counted   *
+*                  datetime date start_date : The first date(inclusive) that should be      *
+*                                             included in the report                        *
+*                  datetime date end_date   : The last date(inclusive) that should be       *
+*                                             included in the report                        *
 *                                                                                           *
 * ***************************************************************************************** *
 '''
@@ -272,9 +201,22 @@ class EbayReport:
         
         # A dictionary containing each seen item and how many times
         # it was seen
-        self.items = {
-                }
+        self.items = {}
 
+    '''
+    * ***************************************************************************************** *
+    *                                                                                           *
+    * Function name:    visit_row                                                               *
+    *                                                                                           *
+    * Description:      Memorizes the data in a row into the class and adds it to the statistics*
+    *                   that are computed                                                       *
+    *                                                                                           *
+    * Parameters:       [str]  row  :   A row of data from the ebay CSV files                   *
+    *                                                                                           *
+    * Return Value:     none                                                                    *
+    *                                                                                           *
+    * ***************************************************************************************** *
+    '''
     def visit_row(self, row):
         self.item_man.update_valid_items()
         item_cost = item_mngr.get_cost(row[self.item_name_i], row[self.date_i])
@@ -314,11 +256,34 @@ class EbayReport:
             except ValueError:
                 print('Junk data, name=', row[self.item_name_i], ' - date=', row[self.date_i])
     
+    '''
+    * ***************************************************************************************** *
+    *                                                                                           *
+    * Function name:    get_net_profit                                                          *
+    *                                                                                           *
+    * Description:      returns the gross profit minus costs                                    *
+    *                                                                                           *
+    * Return Value:     float                                                                   *
+    *                                                                                           *
+    * ***************************************************************************************** *
+    '''
     def get_net_profit(self):
         return self.gross_profit - self.item_costs
     
+    '''
+    * ***************************************************************************************** *
+    *                                                                                           *
+    * Function name:    get_top_items                                                           *
+    *                                                                                           *
+    * Description:      returns a 2d array containing first the name of an item, followed by    *
+    *                   how many times that item was seen by visit_row                          *
+    *                                                                                           *
+    * Return Value:     [[str, float]]                                                          *
+    *                                                                                           *
+    * ***************************************************************************************** *
+    '''
     def get_top_items(self):
-        items_list =[]
+        items_list = []
         for key in self.items.keys():
             items_list.append([key, self.items[key]])
         
@@ -326,6 +291,18 @@ class EbayReport:
 
         return top_items
     
+    '''
+    * ***************************************************************************************** *
+    *                                                                                           *
+    * Function name:    get_avg_margin                                                          *
+    *                                                                                           *
+    * Description:      returns the average profit margin(in percent) of all items seen by      *
+    *                   visit_row                                                               *
+    *                                                                                           *
+    * Return Value:     float                                                                   *
+    *                                                                                           *
+    * ***************************************************************************************** *
+    '''
     def get_avg_margin(self):
         sum = 0
         for i, profit in enumerate(self.order_profits):
@@ -336,6 +313,18 @@ class EbayReport:
         except:
             return 0.0
 
+    '''
+    * ***************************************************************************************** *
+    *                                                                                           *
+    * Function name:    print_report                                                            *
+    *                                                                                           *
+    * Description:      prints to the console a formatted version of the statistcs computed in  *
+    *                   this report                                                             *
+    *                                                                                           *
+    * Return Value:     none                                                                    *
+    *                                                                                           *
+    * ***************************************************************************************** *
+    '''
     def print_report(self):
         print(self.name)
         print(self.start_date, '-', self.end_date)
@@ -353,9 +342,23 @@ class EbayReport:
             if i >= 4:
                 break
 
-    
-
-
+'''
+* ***************************************************************************************** *
+*                                                                                           *
+* Class name:       StatsGen                                                                *
+*                                                                                           *
+* Description:      Orchestrates the generation of commonly needed report timeframes        *
+*                   including: last week, last month, last quarter, last year, year to date *
+*                   all time, and monthly reports for every month contained within the      *
+*                   database                                                                *
+*                                                                                           *
+* Parameters:      [str]        header   : The header of the csv database                   *
+*                  [[str]]      table    : The entire dataset to run the reports on         *
+*                  ItemManager  item_man : The class responsible for keeping track of       *
+*                                          item costs and if an item should be counted      *
+*                                                                                           *
+* ***************************************************************************************** *
+'''
 class StatsGen:
     def __init__(self, header, table, item_man):
         # If you have other sales not on ebay you would like to be added to the full profit calculation
@@ -367,14 +370,19 @@ class StatsGen:
 
         self.full_report = EbayReport(header, self.item_man, 'All time', 'begin', 'end')
         
+        # Ingest the entire report 
         for row in table:
             self.full_report.visit_row(row) 
         
+        # Where all monthly reports will be stored so you can iterate on them
         self.monthly_reports = []
-
+        
+        # The range of dates contained within the whole dataset
         self.first_date = self.full_report.first_date
         self.last_date = self.full_report.last_date
         
+        # Iterate through all months contained in the dataset, find the first and last
+        # days, then create reports for those months
         tempdate = self.first_date 
         while tempdate < self.last_date: # pyright : ignore
             monthrange = calendar.monthrange(tempdate.year, tempdate.month) 
@@ -386,7 +394,8 @@ class StatsGen:
             self.monthly_reports.append(EbayReport(self.header, self.item_man, name, start_date, end_date))
 
             tempdate = end_date + datetime.timedelta(1) 
-
+        
+        # Find the end dates for each relative time range
         date_week = datetime.datetime.now().date() - datetime.timedelta(7)
         date_month = datetime.datetime.now().date() - datetime.timedelta(31)
         date_quarter = datetime.datetime.now().date() - datetime.timedelta(90)
@@ -397,17 +406,43 @@ class StatsGen:
         self.quarter_report = EbayReport(self.header, self.item_man, 'Last 90 days', date_quarter, datetime.datetime.now().date())
         self.year_report = EbayReport(self.header, self.item_man, 'Last 365 days', date_year, datetime.datetime.now().date())
         
-        #TODO start again from here
-
         self.ytd_report = EbayReport(self.header, self.item_man, 'Year to date', datetime.datetime(datetime.datetime.now().year, 1, 1).date(), datetime.datetime.now().date())
+
+        # All relative reports in a list so they can be iterated on
         self.relative_reports = [self.week_report, self.month_report, self.quarter_report, self.year_report, self.ytd_report]
 
+    '''
+    * ***************************************************************************************** *
+    *                                                                                           *
+    * Function name:    run_monthly_reports                                                     *
+    *                                                                                           *
+    * Description:      Ingetsts all data in self.table into all of the monthly reports         *
+    *                                                                                           *
+    * Return Value:     none                                                                    *
+    *                                                                                           *
+    * ***************************************************************************************** *
+    '''
     def run_monthly_reports(self):
         for row in self.table:
             for report in self.monthly_reports:
                 report.visit_row(row)
 
+    '''
+    * ***************************************************************************************** *
+    *                                                                                           *
+    * Function name:    print_monthly_reports                                                   *
+    *                                                                                           *
+    * Description:      Prints all the statistics contained within the monthly reports as well  *
+    *                   as the percentage in change from the previous month (if exists)         *
+    *                                                                                           *
+    * Parameters:       int year    :   The year for which to print reports on                  *
+    *                                                                                           *
+    * Return Value:     none                                                                    *
+    *                                                                                           *
+    * ***************************************************************************************** *
+    '''
     def print_monthly_reports(self, year):
+        # A function for finding the percent of change between 2 values
         def get_change(current, previous):
             if current == previous:
                 return 0
@@ -428,15 +463,51 @@ class StatsGen:
                     print('\tNet profit:', str(round(get_change(report.get_net_profit(), prev.get_net_profit()),2)) + '%')
                 print()
     
+    '''
+    * ***************************************************************************************** *
+    *                                                                                           *
+    * Function name:    run_relative_reports                                                    *
+    *                                                                                           *
+    * Description:      Ingetsts all data in self.table into all of the relative reports        *
+    *                                                                                           *
+    * Return Value:     none                                                                    *
+    *                                                                                           *
+    * ***************************************************************************************** *
+    '''
     def run_relative_reports(self):
         for row in self.table:
             self.item_man.visit_row(row)
             for report in self.relative_reports:
                 report.visit_row(row)
 
+    '''
+    * ***************************************************************************************** *
+    *                                                                                           *
+    * Function name:    set_sales_offset                                                        *
+    *                                                                                           *
+    * Description:      Sets the amount to offset the total profit calculations. Useful if you  *
+    *                   have sales on other platforms you want to count in the full calculation *
+    *                                                                                           *
+    * Parameters:       float amt   : Amount to offset by                                       *
+    *                                                                                           *
+    * Return Value:     none                                                                    *
+    *                                                                                           *
+    * ***************************************************************************************** *
+    '''
     def set_sales_offset(self, amt):
         self.sales_offset = amt
 
+    '''
+    * ***************************************************************************************** *
+    *                                                                                           *
+    * Function name:    print_relative_reports                                                  *
+    *                                                                                           *
+    * Description:      prints all of the relative reports to the console                       *
+    *                                                                                           *
+    * Return Value:     none                                                                    *
+    *                                                                                           *
+    * ***************************************************************************************** *
+    '''
     def print_relative_reports(self):
         for report in self.relative_reports:
             report.print_report()
