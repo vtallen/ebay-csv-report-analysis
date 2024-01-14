@@ -1,3 +1,8 @@
 ./ebay_reports/*
 ebay.csv
 ebay_clean.csv
+costs.csv
+item_alias_table.csv
+item_lookup_table.csv
+item_lookup_table.csv.old
+
