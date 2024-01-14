@@ -2,6 +2,18 @@ import csv
 from datetime import date 
 import os
 
+'''
+* ***************************************************************************************** *
+*                                                                                           *
+* Function name:    get_costs_dataset                                                       *
+*                                                                                           *
+* Description:      Loads the business costs csv into memory                                *
+*                                                                                           *
+* Return Value:     [str]   header      :   The header for the csv file                     *
+*                   [[str]] indataset   :   The table of the csv file                       *
+*                                                                                           *
+* ***************************************************************************************** *
+'''
 def get_costs_dataset(costs_csv_dir='./', costs_csv_filename='costs.csv'):
     inheader = []
     indataset = []
@@ -15,6 +27,22 @@ def get_costs_dataset(costs_csv_dir='./', costs_csv_filename='costs.csv'):
 
     return inheader, indataset
 
+'''
+* ***************************************************************************************** *
+*                                                                                           *
+* Function name:    write_csv                                                               *
+*                                                                                           *
+* Description:      Writes the costs csv out to a file                                      *
+*                                                                                           *
+* Parameters:       str csv_dir     :   The directory to look for the csv file              *
+*                   str csv_filename:   Filename of the csv file                            *
+*                   [str] header    :   Header of the csv file                              *
+*                   [[str]] dataset :   The data to write to the csv                        *
+*                                                                                           *
+* Return Value:     none                                                                    *
+*                                                                                           *
+* ***************************************************************************************** *
+'''
 def write_csv(csv_dir, csv_filename, header, dataset):
     outfile = open(csv_dir + csv_filename, 'w')
     outcsv = csv.writer(outfile, delimiter=',', quotechar='"')
@@ -24,6 +52,20 @@ def write_csv(csv_dir, csv_filename, header, dataset):
 
     outfile.close()
 
+'''
+* ***************************************************************************************** *
+*                                                                                           *
+* Function name:    get_item_row                                                            *
+*                                                                                           *
+* Description:      Launches into an interactive prompt to enter a transaction into the csv *
+*                                                                                           *
+* Parameters:       [str] inheader  :   header for the csv file                             *
+*                   [[str]] dataset :   The data to write to the csv                        *
+*                                                                                           *
+* Return Value:     [str] row       :   A row of data for the csv file                      *
+*                                                                                           *
+* ***************************************************************************************** *
+'''
 def get_item_row(inheader, indataset):
     items = list(set([row[inheader.index('Item')].strip() for row in indataset]))
     items.sort()
@@ -105,6 +147,23 @@ def get_item_row(inheader, indataset):
 
     return new_row
 
+'''
+* ***************************************************************************************** *
+*                                                                                           *
+* Function name:    run                                                                     *
+*                                                                                           *
+* Description:      Launches into an interactive prompt to enter an arbitrary number of     *
+*                   transactions into the csv. Also writes out the csv to disk              *
+*                                                                                           *
+* Parameters:       str csv_dir     :   Directory where the csv will be stored              *
+*                   str csv_filename:   Filename of the csv file                            *
+*                   [str] inheader  :   header for the csv file                             *
+*                   [[str]] dataset :   The data to write to the csv                        *
+*                                                                                           *
+* Return Value:     none                                                                    *
+*                                                                                           *
+* ***************************************************************************************** *
+'''
 def run(csv_dir, csv_filename, header, dataset):
     menu = '''
     Commands:
@@ -135,6 +194,20 @@ def run(csv_dir, csv_filename, header, dataset):
 
     write_csv(csv_dir, csv_filename, inheader, indataset)
 
+'''
+* ***************************************************************************************** *
+*                                                                                           *
+* Function name:    sum_costs                                                               *
+*                                                                                           *
+* Description:      Adds up all costs in the csv file                                       *
+*                                                                                           *
+* Parameters:       [str] header    :   header for the csv file                             *
+*                   [[str]] dataset :   The data to write to the csv                        *
+*                                                                                           *
+* Return Value:     float                                                                   *
+*                                                                                           *
+* ***************************************************************************************** *
+'''
 def sum_costs(header, dataset):
     total_i = header.index('Total')
     
